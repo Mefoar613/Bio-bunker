@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bio-Bunker 2.0</title>
+    <title>Bio-Bunker Fixed</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a1a;
+            background-color: #000;
             color: #fff;
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
@@ -27,29 +27,26 @@
             justify-content: center;
             position: absolute;
             top: 0; left: 0;
-            background-size: cover;
-            background-position: center;
             z-index: 1;
         }
         .active { display: flex; }
 
-        /* Фон меню (заглушка - город) */
+        /* МЕНЮ */
         #screen-menu {
-            background-image: url('https://i.imgur.com/8w6g4rE.png'); /* Твоя картинка */
-            background-color: #000;
-        }
-        
-        /* Затемнение фона для текста */
-        .overlay {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 15px;
-            border: 2px solid #0f0;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://i.imgur.com/8w6g4rE.png');
+            background-size: cover;
+            background-position: center;
         }
 
-        h1 { color: #0f0; text-shadow: 0 0 10px #0f0; margin: 0 0 20px 0; font-size: 28px; }
+        h1 {
+            font-size: 32px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0, 2px 2px 0 #000;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p { font-size: 14px; color: #ccc; text-align: center; max-width: 80%; }
 
         .btn {
             background: #000;
@@ -57,227 +54,251 @@
             border: 2px solid #0f0;
             padding: 15px 40px;
             font-size: 20px;
-            font-family: inherit;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
-            box-shadow: 0 0 10px #0f0;
-            transition: 0.2s;
-            margin-top: 10px;
+            box-shadow: 0 0 15px #0f0;
+            border-radius: 8px;
+            margin-top: 20px;
+            animation: pulse 2s infinite;
         }
-        .btn:active { background: #0f0; color: #000; transform: scale(0.95); }
+        @keyframes pulse { 0% {box-shadow: 0 0 10px #0f0;} 50% {box-shadow: 0 0 25px #0f0;} 100% {box-shadow: 0 0 10px #0f0;} }
+        
+        .btn:active { transform: scale(0.95); background: #0f0; color: #000; }
 
-        /* ИГРОВОЙ ИНТЕРФЕЙС */
+        /* ИГРА */
+        #screen-game { background: #222; }
+        
         #hud {
             position: absolute;
-            top: 10px; left: 10px;
-            color: #0f0;
-            font-size: 18px;
+            top: 15px; left: 15px;
+            color: #fff;
+            font-size: 20px;
             font-weight: bold;
-            text-shadow: 1px 1px 0 #000;
+            text-shadow: 2px 2px 0 #000;
             pointer-events: none;
             z-index: 10;
         }
         
-        canvas { display: block; background: #2b2b2b; }
+        canvas { display: block; width: 100%; height: 100%; }
 
     </style>
 </head>
 <body>
 
     <div id="screen-menu" class="screen active">
-        <div class="overlay">
-            <h1>☢ BIO-BUNKER ☢</h1>
-            <p>Версия 2.0: Звук и Графика</p>
-            <button class="btn" onclick="startGame()">НАЧАТЬ ВЫЛАЗКУ</button>
-        </div>
+        <h1>☢ BIO-BUNKER ☢</h1>
+        <p>Собери уран. Избегай радиации.</p>
+        <button class="btn" onclick="tryStartGame()">НАЧАТЬ</button>
     </div>
 
     <div id="screen-game" class="screen">
-        <div id="hud">☢ БИО-РЕСУРС: <span id="score">0</span></div>
+        <div id="hud">УРАН: <span id="score" style="color:#ff0">0</span></div>
         <canvas id="gameCanvas"></canvas>
     </div>
 
     <script>
+        // Инициализация ТГ
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- ЗВУКИ (Закодированы в base64, чтобы работать без файлов) ---
-        // Звук подбора (короткий пик)
-        const soundCollect = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"); 
-        // (Это пустой звук-заглушка для примера, реальный звук сработает через генератор частот ниже)
-
-        // Аудио контекст для синтеза звуков (чтобы не грузить файлы)
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
-
-        function playBeep() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            osc.type = 'square'; // 8-битный звук
-            osc.frequency.setValueAtTime(440, audioCtx.currentTime); // Нота Ля
-            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // Вверх
-            
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+        // --- БЕЗОПАСНЫЙ ЗВУК ---
+        let audioCtx;
+        function initAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            } catch (e) {
+                console.log("Audio not supported");
+            }
         }
 
-        function playBoom() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            
-            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
 
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+                if (type === 'collect') {
+                    // Приятный пик
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                } else if (type === 'boom') {
+                    // Взрыв
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                }
+            } catch (e) { console.error(e); }
         }
-
-        // --- ГРАФИКА (СПРАЙТЫ) ---
-        const imgHero = new Image(); imgHero.src = 'https://img.icons8.com/color/96/hazmat-suit.png'; // Мужик в химзащите
-        const imgBarrel = new Image(); imgBarrel.src = 'https://img.icons8.com/color/96/oil-barrel.png'; // Бочка
-        const imgRad = new Image(); imgRad.src = 'https://img.icons8.com/color/96/radioactive.png'; // Знак радиации
 
         // --- ИГРОВАЯ ЛОГИКА ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let gameLoopId;
         
-        let hero = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
+        let hero = { x: 0, y: 0, vx: 0, vy: 0 };
         let items = [];
         let enemies = [];
         let score = 0;
+        let gameRunning = false;
 
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            hero.x = canvas.width / 2;
-            hero.y = canvas.height / 2;
         }
         window.addEventListener('resize', resize);
+
+        function tryStartGame() {
+            try {
+                initAudio(); // Пробуем включить звук
+                startGame();
+            } catch (e) {
+                alert("Ошибка запуска: " + e.message);
+            }
+        }
 
         function startGame() {
             document.getElementById('screen-menu').classList.remove('active');
             document.getElementById('screen-game').classList.add('active');
             resize();
             
-            // Инициализация звука по клику
-            audioCtx.resume();
-
+            hero.x = canvas.width / 2;
+            hero.y = canvas.height / 2;
             score = 0;
             items = [];
             enemies = [];
             
-            // Спавн предметов
-            for(let i=0; i<10; i++) spawnItem();
-            for(let i=0; i<3; i++) spawnEnemy();
+            // Создаем объекты
+            for(let i=0; i<15; i++) spawnItem();
+            for(let i=0; i<5; i++) spawnEnemy();
             
-            update();
+            gameRunning = true;
+            requestAnimationFrame(gameLoop);
         }
 
         function spawnItem() {
             items.push({
-                x: Math.random() * (canvas.width - 40) + 20,
-                y: Math.random() * (canvas.height - 40) + 20
+                x: Math.random() * (canvas.width - 50) + 25,
+                y: Math.random() * (canvas.height - 50) + 25,
+                icon: '🛢️'
             });
         }
-        
+
         function spawnEnemy() {
             enemies.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 3,
-                vy: (Math.random() - 0.5) * 3
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                icon: '☢️'
             });
         }
 
-        // УПРАВЛЕНИЕ (ДЖОЙСТИК)
+        // --- УПРАВЛЕНИЕ ---
         let touchStart = null;
-        canvas.addEventListener('touchstart', e => { touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY}; });
+        canvas.addEventListener('touchstart', e => { 
+            e.preventDefault();
+            touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY}; 
+        }, {passive: false});
+        
         canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
             if(!touchStart) return;
             let dx = e.touches[0].clientX - touchStart.x;
             let dy = e.touches[0].clientY - touchStart.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
             
-            if (dist > 0) {
-                let speed = 4;
+            if (dist > 10) { // Мертвая зона
+                let speed = 5; // Скорость героя
                 hero.vx = (dx/dist) * speed;
                 hero.vy = (dy/dist) * speed;
-                // Поворот спрайта (опционально, пока просто бегает)
             }
-        });
-        canvas.addEventListener('touchend', () => { hero.vx = 0; hero.vy = 0; touchStart = null; });
+        }, {passive: false});
+        
+        canvas.addEventListener('touchend', e => { 
+            e.preventDefault();
+            hero.vx = 0; 
+            hero.vy = 0; 
+            touchStart = null; 
+        }, {passive: false});
 
-        function update() {
-            ctx.fillStyle = '#222'; // Цвет земли
+        // --- ГЛАВНЫЙ ЦИКЛ ---
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Очистка и фон
+            ctx.fillStyle = '#2b2b2b';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Сетка земли (для ощущения движения)
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            for(let x=0; x<canvas.width; x+=50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
-            for(let y=0; y<canvas.height; y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+            // Рисуем сетку
+            ctx.strokeStyle = '#3a3a3a';
+            ctx.lineWidth = 2;
+            const gridSize = 50;
+            for(let x = 0; x < canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+            for(let y = 0; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
 
-            // ГЕРОЙ
-            hero.x += hero.vx; hero.y += hero.vy;
-            // Ограничение экраном
+            // ОБНОВЛЕНИЕ ГЕРОЯ
+            hero.x += hero.vx; 
+            hero.y += hero.vy;
+            // Стены
             hero.x = Math.max(20, Math.min(canvas.width-20, hero.x));
             hero.y = Math.max(20, Math.min(canvas.height-20, hero.y));
-            
-            // Рисуем Героя (Картинка)
-            ctx.drawImage(imgHero, hero.x - 24, hero.y - 24, 48, 48);
 
-            // ПРЕДМЕТЫ (БОЧКИ)
+            // РИСУЕМ ГЕРОЯ (Эмодзи вместо картинки)
+            ctx.font = "40px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🧟‍♂️", hero.x, hero.y);
+            
+            // ПРЕДМЕТЫ
             for (let i = items.length - 1; i >= 0; i--) {
                 let it = items[i];
-                ctx.drawImage(imgBarrel, it.x - 20, it.y - 20, 40, 40);
+                ctx.fillText(it.icon, it.x, it.y);
                 
                 // Сбор
                 if (Math.hypot(hero.x - it.x, hero.y - it.y) < 40) {
                     items.splice(i, 1);
                     score += 10;
                     document.getElementById('score').innerText = score;
-                    playBeep(); // ЗВУК!
-                    tg.HapticFeedback.impactOccurred('light'); // Вибрация
-                    spawnItem(); // Спавним новую
+                    playSound('collect');
+                    try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
+                    spawnItem();
                 }
             }
 
-            // ВРАГИ (РАДИАЦИЯ)
+            // ВРАГИ
             for (let e of enemies) {
                 e.x += e.vx; e.y += e.vy;
-                if(e.x<0 || e.x>canvas.width) e.vx *= -1;
-                if(e.y<0 || e.y>canvas.height) e.vy *= -1;
+                if(e.x < 0 || e.x > canvas.width) e.vx *= -1;
+                if(e.y < 0 || e.y > canvas.height) e.vy *= -1;
                 
-                ctx.drawImage(imgRad, e.x - 25, e.y - 25, 50, 50);
+                ctx.fillText(e.icon, e.x, e.y);
 
+                // Столкновение
                 if (Math.hypot(hero.x - e.x, hero.y - e.y) < 40) {
-                    playBoom(); // ЗВУК ВЗРЫВА
-                    tg.HapticFeedback.notificationOccurred('error');
-                    alert("ВЫ ПОПАЛИ В ЗОНУ РАДИАЦИИ!");
+                    playSound('boom');
+                    try { tg.HapticFeedback.notificationOccurred('error'); } catch(e){}
+                    gameRunning = false;
+                    alert("☢️ ТЕБЯ СОЖРАЛА РАДИАЦИЯ! \nСчет: " + score);
                     location.reload();
                     return;
                 }
             }
 
-            requestAnimationFrame(update);
+            requestAnimationFrame(gameLoop);
         }
-
     </script>
 </body>
 </html>

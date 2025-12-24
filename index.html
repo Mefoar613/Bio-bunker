@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bio-Bunker TG</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--tg-theme-bg-color, #000); /* Цвет фона из темы ТГ */
+            color: var(--tg-theme-text-color, #fff);
+            font-family: sans-serif;
+            overflow: hidden;
+            touch-action: none; 
+            user-select: none;
+        }
+
+        /* ЭКРАНЫ */
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0; left: 0;
+        }
+        .active { display: flex; }
+
+        /* UI ЭЛЕМЕНТЫ */
+        h1 { font-size: 24px; text-transform: uppercase; color: #0f0; text-shadow: 0 0 10px #0f0; margin-bottom: 10px; }
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            width: 80%;
+            margin: 5px 0;
+            text-align: center;
+        }
+        .btn {
+            background: var(--tg-theme-button-color, #2ea6ff);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 12px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .btn:active { opacity: 0.8; transform: scale(0.98); }
+        .btn-upgrade { background: #333; font-size: 14px; padding: 10px 20px; border: 1px solid #555; width: 90%; margin-top: 5px; }
+
+        /* ИГРОВОЕ ПОЛЕ */
+        canvas { display: block; background: #111; }
+        
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #000;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="screen-base" class="screen active">
+        <h1>☢ БУНКЕР 42 ☢</h1>
+        <div class="stat-box">
+            <div>Био-ресурс: <span id="res-bio" style="color:#0f0; font-size:22px;">0</span></div>
+        </div>
+        
+        <div class="stat-box">
+            <h3>Мутации</h3>
+            <div id="stat-speed">Скорость: 1 ур.</div>
+            <button class="btn btn-upgrade" onclick="upgrade('speed')">Улучшить (Цена: <span id="cost-speed">10</span>)</button>
+            
+            <div id="stat-radius" style="margin-top:10px;">Магнит: 1 ур.</div>
+            <button class="btn btn-upgrade" onclick="upgrade('radius')">Улучшить (Цена: <span id="cost-radius">10</span>)</button>
+        </div>
+
+        <button class="btn" onclick="startRaid()">НА ВЫЛАЗКУ</button>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div id="hud">Собрано: <span id="game-score">0</span> / <span id="game-target">10</span></div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // --- 1. ИНИЦИАЛИЗАЦИЯ ТЕЛЕГРАМА ---
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
+        tg.ready();  // Сообщить, что приложение загрузилось
+
+        // --- 2. ДАННЫЕ ИГРОКА ---
+        let player = {
+            bio: 0,
+            speedLvl: 1,
+            radiusLvl: 1
+        };
+
+        // Цены
+        const getCost = (lvl) => lvl * 10;
+
+        // UI Элементы
+        const bioEl = document.getElementById('res-bio');
+        const costSpeedEl = document.getElementById('cost-speed');
+        const costRadiusEl = document.getElementById('cost-radius');
+        const statSpeedEl = document.getElementById('stat-speed');
+        const statRadiusEl = document.getElementById('stat-radius');
+
+        function updateBaseUI() {
+            bioEl.innerText = player.bio;
+            costSpeedEl.innerText = getCost(player.speedLvl);
+            costRadiusEl.innerText = getCost(player.radiusLvl);
+            statSpeedEl.innerText = `Скорость: ${player.speedLvl} ур.`;
+            statRadiusEl.innerText = `Магнит: ${player.radiusLvl} ур.`;
+            
+            // Сохраняем прогресс в облако ТГ (на будущее)
+            // tg.CloudStorage...
+        }
+
+        function upgrade(type) {
+            let cost = 0;
+            if (type === 'speed') cost = getCost(player.speedLvl);
+            if (type === 'radius') cost = getCost(player.radiusLvl);
+
+            if (player.bio >= cost) {
+                player.bio -= cost;
+                if (type === 'speed') player.speedLvl++;
+                if (type === 'radius') player.radiusLvl++;
+                updateBaseUI();
+                tg.HapticFeedback.impactOccurred('medium'); // Вибрация телефона!
+            } else {
+                tg.HapticFeedback.notificationOccurred('error'); // Вибрация ошибки
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // --- 3. ИГРОВОЙ ДВИЖОК (CANVAS) ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameLoopId;
+        let gameState = {
+            score: 0,
+            target: 10,
+            over: false,
+            hero: { x:0, y:0, vx:0, vy:0 },
+            particles: [],
+            enemies: []
+        };
+
+        // Настройка Canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+
+        function startRaid() {
+            showScreen('screen-game');
+            resize();
+            
+            // Сброс
+            gameState.score = 0;
+            gameState.target = 5 + (player.speedLvl + player.radiusLvl); // Сложнее с уровнем
+            gameState.over = false;
+            gameState.hero = { x: canvas.width/2, y: canvas.height/2, vx:0, vy:0 };
+            gameState.particles = [];
+            gameState.enemies = [];
+
+            // Генерируем частицы
+            for(let i=0; i<gameState.target + 5; i++) spawnParticle();
+            // Генерируем врагов (радиацию)
+            for(let i=0; i<3 + player.speedLvl; i++) spawnEnemy();
+
+            document.getElementById('game-target').innerText = gameState.target;
+            
+            // Включаем кнопку "Назад" в ТГ
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                stopRaid();
+            });
+
+            gameLoop();
+        }
+
+        function stopRaid() {
+            cancelAnimationFrame(gameLoopId);
+            tg.BackButton.hide();
+            tg.BackButton.offClick();
+            showScreen('screen-base');
+            updateBaseUI();
+        }
+
+        function spawnParticle() {
+            gameState.particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: 5 + Math.random() * 5
+            });
+        }
+        
+        function spawnEnemy() {
+            gameState.enemies.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: 15 + Math.random() * 10,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2
+            });
+        }
+
+        // Управление (Джойстик логика)
+        let touchStart = {x:0, y:0};
+        let isTouching = false;
+
+        canvas.addEventListener('touchstart', e => {
+            touchStart.x = e.touches[0].clientX;
+            touchStart.y = e.touches[0].clientY;
+            isTouching = true;
+        });
+        canvas.addEventListener('touchmove', e => {
+            if (!isTouching) return;
+            let dx = e.touches[0].clientX - touchStart.x;
+            let dy = e.touches[0].clientY - touchStart.y;
+            
+            // Скорость зависит от прокачки
+            let speed = 3 + player.speedLvl * 0.5;
+            
+            // Нормализация вектора
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 0) {
+                gameState.hero.vx = (dx/dist) * speed;
+                gameState.hero.vy = (dy/dist) * speed;
+            }
+        });
+        canvas.addEventListener('touchend', () => {
+            isTouching = false;
+            gameState.hero.vx = 0;
+            gameState.hero.vy = 0;
+        });
+
+        // --- ЦИКЛ ИГРЫ ---
+        function gameLoop() {
+            if (gameState.over) return;
+
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Герой
+            gameState.hero.x += gameState.hero.vx;
+            gameState.hero.y += gameState.hero.vy;
+            
+            // Ограничение стенами
+            gameState.hero.x = Math.max(10, Math.min(canvas.width-10, gameState.hero.x));
+            gameState.hero.y = Math.max(10, Math.min(canvas.height-10, gameState.hero.y));
+
+            // Рисуем героя
+            ctx.beginPath();
+            ctx.arc(gameState.hero.x, gameState.hero.y, 10, 0, Math.PI*2);
+            ctx.fillStyle = '#0f0'; // Зеленый мутант
+            ctx.fill();
+            // Зона сбора (Магнит)
+            ctx.beginPath();
+            ctx.arc(gameState.hero.x, gameState.hero.y, 20 + player.radiusLvl * 5, 0, Math.PI*2);
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+            ctx.stroke();
+
+            // Частицы
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                let p = gameState.particles[i];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.fillStyle = '#ff0'; // Желтые ресурсы
+                ctx.fill();
+
+                // Сбор (проверка дистанции)
+                let dx = gameState.hero.x - p.x;
+                let dy = gameState.hero.y - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let collectRadius = 20 + player.radiusLvl * 5;
+
+                if (dist < collectRadius) {
+                    gameState.particles.splice(i, 1);
+                    gameState.score++;
+                    tg.HapticFeedback.selectionChanged(); // Легкая вибрация при сборе
+                    document.getElementById('game-score').innerText = gameState.score;
+                    
+                    if (gameState.score >= gameState.target) {
+                        finishRaid(true);
+                        return;
+                    }
+                }
+            }
+
+            // Враги (Радиация)
+            for (let e of gameState.enemies) {
+                e.x += e.vx; e.y += e.vy;
+                
+                // Отскок от стен
+                if (e.x < 0 || e.x > canvas.width) e.vx *= -1;
+                if (e.y < 0 || e.y > canvas.height) e.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.6)'; // Красная опасность
+                ctx.fill();
+
+                // Столкновение
+                let dx = gameState.hero.x - e.x;
+                let dy = gameState.hero.y - e.y;
+                if (Math.sqrt(dx*dx + dy*dy) < 10 + e.r) {
+                    finishRaid(false);
+                    return;
+                }
+            }
+
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function finishRaid(win) {
+            gameState.over = true;
+            if (win) {
+                tg.showAlert(`УСПЕХ!\nДобыто: ${gameState.score} био.`);
+                player.bio += gameState.score;
+            } else {
+                tg.showAlert(`ПРОВАЛ!\nВы погибли от радиации.`);
+            }
+            stopRaid();
+        }
+
+        // Старт
+        updateBaseUI();
+
+    </script>
+</body>
+</html>

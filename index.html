@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bio-Bunker 5.0</title>
+    <title>Bio-Bunker v7 UI FIX</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -17,7 +17,7 @@
             user-select: none;
         }
 
-        /* --- ЗАГРУЗЧИК (ДВЕРИ) --- */
+        /* --- ЗАГРУЗЧИК --- */
         #loader {
             position: fixed;
             top: 0; left: 0;
@@ -26,7 +26,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #000; /* Подложка */
+            background: #000;
             transition: opacity 0.5s;
         }
 
@@ -35,15 +35,15 @@
             top: 0;
             width: 50%;
             height: 100%;
-            background: url('https://i.postimg.cc/RZRVdSN2/1766590760938.jpg') no-repeat center center;
+            /* ?v=7 для сброса кэша */
+            background: url('https://i.postimg.cc/RZRVdSN2/1766590760938.jpg?v=7') no-repeat center center;
             background-size: cover;
-            transition: transform 1.2s cubic-bezier(0.6, 0.05, 0.2, 0.9);
+            transition: transform 1s ease-in-out;
             z-index: 2;
         }
         #door-left { left: 0; border-right: 2px solid #111; }
         #door-right { right: 0; border-left: 2px solid #111; }
 
-        /* Класс для открытия */
         .open .door-panel#door-left { transform: translateX(-100%); }
         .open .door-panel#door-right { transform: translateX(100%); }
 
@@ -52,28 +52,79 @@
             z-index: 3;
             width: 160px;
             height: 160px;
-            background: url('https://i.postimg.cc/VLX6hy7r/1000054477.png') no-repeat center center;
+            background: url('https://i.postimg.cc/VLX6hy7r/1000054477.png?v=7') no-repeat center center;
             background-size: contain;
-            filter: drop-shadow(0 0 10px rgba(0, 255, 0, 0.8));
+            filter: drop-shadow(0 0 15px rgba(0, 255, 0, 0.8));
             animation: pulse 1.5s infinite alternate;
-            transition: opacity 0.5s;
         }
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); filter: drop-shadow(0 0 20px #0f0); } }
+        @keyframes pulse { to { transform: scale(1.1); } }
 
-        #loading-text {
+        /* Кнопка пропуска (на всякий случай оставил, но сделал меньше) */
+        #skip-btn {
             position: absolute;
-            bottom: 10%;
-            z-index: 4;
-            color: #0f0;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            animation: blink 1s infinite;
-            transition: opacity 0.5s;
+            bottom: 5%;
+            z-index: 10000;
+            background: transparent;
+            color: #555;
+            border: 1px solid #333;
+            font-size: 10px;
+            padding: 5px;
+            cursor: pointer;
         }
-        @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* --- ЭКРАНЫ --- */
+        /* --- МЕНЮ --- */
+        #screen-menu {
+            background: url('https://i.postimg.cc/JnyrRjP7/1766591867996.png?v=7') no-repeat center bottom;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Все элементы внизу */
+            align-items: center;
+            padding-bottom: 60px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 5px; /* Уменьшил отступ, так как кнопки высокие */
+            width: 100%;
+            align-items: center;
+        }
+
+        /* --- ИСПРАВЛЕННЫЕ КНОПКИ --- */
+        .menu-btn {
+            /* 1. Делаем ширину почти во весь экран, но не больше картинки */
+            width: 90%; 
+            max-width: 380px; 
+            
+            /* 2. Увеличиваем высоту, чтобы картинка влезла */
+            height: 110px; 
+            
+            /* 3. ГЛАВНОЕ: Не растягиваем (cover), а вмещаем (contain) */
+            background: url('https://i.postimg.cc/C1WhvJkb/1000054476.png?v=7') no-repeat center center;
+            background-size: contain; 
+            
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            color: #e0ffe0; /* Светло-зеленый текст */
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-shadow: 0 2px 4px rgba(0,0,0,1);
+            cursor: pointer;
+            
+            /* Корректировка текста по вертикали (чуть выше центра) */
+            padding-bottom: 5px;
+        }
+        
+        .menu-btn:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
+
+        /* --- ИГРА --- */
         .screen {
             display: none;
             width: 100vw; height: 100vh;
@@ -84,44 +135,10 @@
             z-index: 1;
         }
         .active { display: flex; }
-
-        /* --- ГЛАВНОЕ МЕНЮ --- */
-        #screen-menu {
-            background: url('https://i.postimg.cc/JnyrRjP7/1766591867996.png') no-repeat center bottom;
-            background-size: cover;
-            justify-content: flex-end; /* Кнопки внизу */
-            padding-bottom: 50px;
-        }
-
-        .menu-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-            align-items: center;
-        }
-
-        .menu-btn {
-            width: 300px;
-            height: 80px;
-            background: url('https://i.postimg.cc/C1WhvJkb/1000054476.png') no-repeat center center;
-            background-size: 100% 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            
-            color: #d0ffd0;
-            font-size: 20px;
-            font-weight: 900;
-            text-transform: uppercase;
-            text-shadow: 0 2px 3px rgba(0,0,0,0.8);
-            cursor: pointer;
-            padding-bottom: 5px; /* Коррекция текста */
-        }
-        .menu-btn:active { transform: scale(0.96); filter: brightness(1.2); }
-
-        /* --- ИГРА --- */
+        
         #screen-game { background: #111; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
         #hud {
             position: absolute;
             top: 15px; left: 15px;
@@ -132,29 +149,28 @@
             pointer-events: none;
             text-shadow: 1px 1px 2px #000;
         }
-        canvas { display: block; width: 100%; height: 100%; }
 
     </style>
 </head>
 <body>
 
-    <div id="loader" onclick="forceOpen()">
+    <div id="loader">
         <div id="door-left" class="door-panel"></div>
         <div id="door-right" class="door-panel"></div>
         <div id="rad-icon"></div>
-        <div id="loading-text">Загрузка...<br><span style="font-size:10px; opacity:0.7">(Нажми если зависло)</span></div>
+        <button id="skip-btn" onclick="forceKillLoader()">SKIP</button>
     </div>
 
     <div id="screen-menu" class="screen active">
         <div class="menu-buttons">
             <div class="menu-btn" onclick="startGame()">НОВАЯ ИГРА</div>
-            <div class="menu-btn" onclick="alert('Скоро...')">НАСТРОЙКИ</div>
+            <div class="menu-btn" onclick="alert('Настройки в разработке')">НАСТРОЙКИ</div>
             <div class="menu-btn" onclick="alert('Dev: Imanuel')">ОБ АВТОРЕ</div>
         </div>
     </div>
 
     <div id="screen-game" class="screen">
-        <div id="hud">УРАН: <span id="score" style="color:#0f0">0</span></div>
+        <div id="hud">УРАН: <span id="score">0</span></div>
         <canvas id="gameCanvas"></canvas>
     </div>
 
@@ -162,96 +178,38 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- ЛОГИКА ЗАГРУЗКИ (БЕЗ ЗАВИСАНИЙ) ---
-        // Запускаем сразу, не ждем картинки
-        setTimeout(openDoors, 2500);
+        // Авто-открытие через 2 сек
+        setTimeout(forceKillLoader, 2000);
 
-        function openDoors() {
+        function forceKillLoader() {
             const loader = document.getElementById('loader');
-            const icon = document.getElementById('rad-icon');
-            const text = document.getElementById('loading-text');
-
             if(!loader) return;
-
-            // 1. Скрываем иконку и текст
-            icon.style.opacity = '0';
-            text.style.opacity = '0';
-
-            // 2. Открываем двери
+            document.getElementById('rad-icon').style.opacity = '0';
+            document.getElementById('skip-btn').style.display = 'none';
             loader.classList.add('open');
-
-            // 3. Удаляем полностью через 1.2 сек
             setTimeout(() => {
                 loader.style.display = 'none';
-            }, 1200);
-        }
-
-        // Запасной вариант: клик по экрану принудительно убирает загрузку
-        function forceOpen() {
-            document.getElementById('loader').style.display = 'none';
-        }
-
-        // --- ЗВУК ---
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx;
-        function initAudio() {
-            if (!audioCtx && AudioContext) audioCtx = new AudioContext();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        }
-
-        function playSound(type) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            if (type === 'coin') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-            }
-            if (type === 'boom') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
-            }
+                loader.remove();
+            }, 1000);
         }
 
         // --- ИГРА ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let hero = {x:0, y:0, vx:0, vy:0};
-        let items = [], enemies = [];
-        let score = 0;
-        let isRunning = false;
+        let items = [], enemies = [], score = 0, isRunning = false;
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
 
         function startGame() {
-            initAudio();
             document.getElementById('screen-menu').classList.remove('active');
             document.getElementById('screen-game').classList.add('active');
             resize();
-
-            hero.x = canvas.width/2; 
-            hero.y = canvas.height/2;
+            hero.x = canvas.width/2; hero.y = canvas.height/2;
             items = []; enemies = []; score = 0;
-            
-            // Спавн
-            for(let i=0; i<15; i++) items.push({x: Math.random()*(canvas.width-50)+25, y: Math.random()*(canvas.height-50)+25});
-            for(let i=0; i<5; i++) enemies.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4});
-
+            for(let i=0; i<12; i++) items.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
+            for(let i=0; i<4; i++) enemies.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx:Math.random()-0.5, vy:Math.random()-0.5});
             isRunning = true;
             loop();
         }
@@ -264,58 +222,41 @@
             if(!touch) return;
             let dx = e.touches[0].clientX - touch.x;
             let dy = e.touches[0].clientY - touch.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist>10) {
-                hero.vx = (dx/dist)*5;
-                hero.vy = (dy/dist)*5;
-            }
+            hero.vx = (dx/Math.hypot(dx,dy))*5; hero.vy = (dy/Math.hypot(dx,dy))*5;
         }, {passive:false});
         canvas.addEventListener('touchend', e=>{ e.preventDefault(); hero.vx=0; hero.vy=0; touch=null; }, {passive:false});
 
         function loop() {
             if(!isRunning) return;
+            ctx.fillStyle = '#222'; ctx.fillRect(0,0, canvas.width, canvas.height);
             
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0,0, canvas.width, canvas.height);
-            
-            ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+            // Сетка
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
             for(let x=0; x<canvas.width; x+=50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
             for(let y=0; y<canvas.height; y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
 
-            ctx.fillStyle = '#FFF'; 
-            ctx.font = "40px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-
+            // Герой
             hero.x += hero.vx; hero.y += hero.vy;
-            hero.x = Math.max(20, Math.min(canvas.width-20, hero.x));
-            hero.y = Math.max(20, Math.min(canvas.height-20, hero.y));
+            ctx.font = "40px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
             ctx.fillText("🧟‍♂️", hero.x, hero.y);
 
+            // Ресурсы
             for(let i=items.length-1; i>=0; i--) {
-                let it = items[i];
-                ctx.fillText("🛢️", it.x, it.y);
-                if(Math.hypot(hero.x-it.x, hero.y-it.y)<40) {
-                    items.splice(i,1);
-                    score+=10;
-                    document.getElementById('score').innerText = score;
-                    playSound('coin');
+                ctx.fillText("🛢️", items[i].x, items[i].y);
+                if(Math.hypot(hero.x-items[i].x, hero.y-items[i].y)<40) {
+                    items.splice(i,1); score+=10; document.getElementById('score').innerText=score;
                     try{tg.HapticFeedback.impactOccurred('light');}catch(e){}
-                    items.push({x: Math.random()*(canvas.width-50)+25, y: Math.random()*(canvas.height-50)+25});
+                    items.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
                 }
             }
-
+            // Враги
             for(let e of enemies) {
-                e.x += e.vx; e.y += e.vy;
+                e.x+=e.vx*3; e.y+=e.vy*3;
                 if(e.x<0||e.x>canvas.width) e.vx*=-1;
                 if(e.y<0||e.y>canvas.height) e.vy*=-1;
                 ctx.fillText("☢️", e.x, e.y);
                 if(Math.hypot(hero.x-e.x, hero.y-e.y)<40) {
-                    playSound('boom');
-                    try{tg.HapticFeedback.notificationOccurred('error');}catch(e){}
-                    alert("РАДИАЦИЯ! Счет: " + score);
-                    startGame(); 
-                    return;
+                    alert("РАДИАЦИЯ!"); startGame(); return;
                 }
             }
             requestAnimationFrame(loop);

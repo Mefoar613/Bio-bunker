@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bio-Bunker Final</title>
+    <title>Bio-Bunker Cinematic</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -17,10 +17,74 @@
             user-select: none;
         }
 
+        /* --- ЭКРАН ЗАГРУЗКИ (ШЛЮЗ) --- */
+        #loader {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* Чтобы не мешал кликам после анимации */
+        }
+
+        /* Двери (Левая и Правая створки) */
+        .door-panel {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: url('https://i.postimg.cc/RZRVdSN2/1766590760938.jpg') no-repeat center center;
+            background-size: cover;
+            transition: transform 1.5s cubic-bezier(0.6, 0.05, 0.2, 0.9);
+            z-index: 2;
+            border-right: 2px solid #111; /* Шов посередине */
+        }
+        #door-left { left: 0; border-right: 1px solid #000; }
+        #door-right { right: 0; border-left: 1px solid #000; }
+
+        /* Состояние "Открыто" */
+        .door-open #door-left { transform: translateX(-100%); }
+        .door-open #door-right { transform: translateX(100%); }
+
+        /* Знак Радиации */
+        #rad-icon {
+            position: absolute;
+            z-index: 3;
+            width: 150px;
+            height: 150px;
+            background: url('https://i.postimg.cc/cLMNWFW3/1766592774252.png') no-repeat center center;
+            background-size: contain;
+            transition: opacity 0.5s, transform 0.5s;
+            filter: drop-shadow(0 0 10px rgba(100, 255, 0, 0.5));
+            animation: pulse-rad 2s infinite;
+        }
+        @keyframes pulse-rad {
+            0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(100, 255, 0, 0.3)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(100, 255, 0, 1)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(100, 255, 0, 0.3)); }
+        }
+
+        /* Текст загрузки */
+        #loading-text {
+            position: absolute;
+            bottom: 15%;
+            z-index: 3;
+            color: #0f0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px #0f0;
+            transition: opacity 0.5s;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* --- ЭКРАНЫ --- */
         .screen {
             display: none;
-            width: 100vw;
-            height: 100vh;
+            width: 100vw; height: 100vh;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -30,65 +94,85 @@
         }
         .active { display: flex; }
 
-        /* МЕНЮ */
+        /* --- ГЛАВНОЕ МЕНЮ --- */
         #screen-menu {
-            /* Фоновая картинка (Убедись, что ссылка работает, или убери url(...) ) */
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://i.imgur.com/8w6g4rE.png');
+            background: url('https://i.postimg.cc/JnyrRjP7/1766591867996.png') no-repeat center bottom;
             background-size: cover;
-            background-position: center;
+            justify-content: flex-end; /* Кнопки внизу */
+            padding-bottom: 20px; /* Отступ снизу */
         }
 
-        h1 {
-            font-size: 32px;
-            color: #0f0;
-            text-shadow: 0 0 10px #0f0;
-            margin-bottom: 20px;
-            text-align: center;
+        /* Панель кнопок */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            align-items: center;
+            margin-bottom: 10%; /* Поднимаем чуть выше края */
         }
 
-        p { text-align: center; color: #ccc; max-width: 80%; }
-
-        .btn {
-            background: #000;
-            color: #0f0;
-            border: 2px solid #0f0;
-            padding: 15px 40px;
+        /* Кнопка на основе твоей картинки */
+        .menu-btn {
+            width: 280px;
+            height: 70px;
+            background: url('https://i.postimg.cc/c4GxNgY0/1766592675932.png') no-repeat center center;
+            background-size: contain;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccffcc; /* Бледно-зеленый */
             font-size: 20px;
-            font-weight: bold;
+            font-weight: 900;
+            font-family: 'Verdana', sans-serif; /* Более строгий шрифт */
+            text-transform: uppercase;
+            text-shadow: 0 2px 2px rgba(0,0,0,0.8);
             cursor: pointer;
-            box-shadow: 0 0 15px #0f0;
-            border-radius: 8px;
-            margin-top: 30px;
-            animation: pulse 1.5s infinite;
+            transition: transform 0.1s;
+            /* Компенсация, если текст на картинке не по центру - можно двигать padding */
+            padding-bottom: 5px; 
         }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        .menu-btn:active {
+            transform: scale(0.95);
+            filter: brightness(1.2);
+        }
 
-        #screen-game { background: #222; }
-
+        /* --- ИГРА --- */
+        #screen-game { background: #111; }
         #hud {
             position: absolute;
-            top: 20px; left: 20px;
+            top: 15px; left: 15px;
             color: #fff;
             font-size: 20px;
             font-weight: bold;
             z-index: 10;
             pointer-events: none;
+            text-shadow: 1px 1px 0 #000;
         }
-        
         canvas { display: block; width: 100%; height: 100%; }
+
     </style>
 </head>
 <body>
 
+    <div id="loader">
+        <div id="door-left" class="door-panel"></div>
+        <div id="door-right" class="door-panel"></div>
+        <div id="rad-icon"></div>
+        <div id="loading-text">Инициализация био-систем...</div>
+    </div>
+
     <div id="screen-menu" class="screen active">
-        <h1>☢ BIO-BUNKER ☢</h1>
-        <p>Версия 3.0 (Рабочая)</p>
-        <p>Собери бочки. Не трогай радиацию.</p>
-        <button class="btn" onclick="startGame()">ИГРАТЬ</button>
+        <div class="menu-buttons">
+            <div class="menu-btn" onclick="startGame()">Новая Игра</div>
+            <div class="menu-btn" onclick="alert('Настройки пока недоступны')">Настройки</div>
+            <div class="menu-btn" onclick="alert('Автор: Имануэль')">Об Авторе</div>
+        </div>
     </div>
 
     <div id="screen-game" class="screen">
-        <div id="hud">УРАН: <span id="score" style="color:#ff0">0</span></div>
+        <div id="hud">УРАН: <span id="score" style="color:#0f0">0</span></div>
         <canvas id="gameCanvas"></canvas>
     </div>
 
@@ -96,25 +180,40 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- ЗВУК (Генератор частот) ---
+        // --- ЛОГИКА ЗАГРУЗКИ ---
+        window.onload = function() {
+            // Ждем 3 секунды для красоты, потом открываем двери
+            setTimeout(() => {
+                // 1. Убираем текст и знак
+                document.getElementById('rad-icon').style.opacity = '0';
+                document.getElementById('loading-text').style.opacity = '0';
+                
+                // 2. Открываем двери
+                document.getElementById('loader').classList.add('door-open');
+
+                // 3. Удаляем загрузчик из DOM через время анимации (чтобы не мешал кликать)
+                setTimeout(() => {
+                    document.getElementById('loader').style.display = 'none';
+                }, 1500);
+            }, 3000);
+        };
+
+        // --- ЗВУКОВОЙ ДВИЖОК ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
-
         function initAudio() {
             if (!audioCtx && AudioContext) audioCtx = new AudioContext();
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         }
-
         function playSound(type) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             if (type === 'coin') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
@@ -124,13 +223,13 @@
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(100, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.5);
             }
         }
 
-        // --- ИГРА ---
+        // --- ИГРОВОЙ КОД ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let hero = {x:0, y:0, vx:0, vy:0};
@@ -154,8 +253,9 @@
             hero.y = canvas.height/2;
             items = []; enemies = []; score = 0;
 
-            // Спавн
+            // Спавн ресурсов
             for(let i=0; i<15; i++) items.push({x: Math.random()*(canvas.width-50)+25, y: Math.random()*(canvas.height-50)+25});
+            // Спавн врагов
             for(let i=0; i<5; i++) enemies.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4});
 
             isRunning = true;
@@ -181,29 +281,26 @@
         function loop() {
             if(!isRunning) return;
             
-            // 1. ФОН
             ctx.fillStyle = '#222';
             ctx.fillRect(0,0, canvas.width, canvas.height);
-
-            // 2. СЕТКА
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
+            
+            // Сетка
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
             for(let x=0; x<canvas.width; x+=50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
             for(let y=0; y<canvas.height; y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
 
-            // 3. ОБЪЕКТЫ (Важно: ставим белый цвет для эмодзи!)
+            // Объекты (Эмодзи)
             ctx.fillStyle = '#FFF'; 
             ctx.font = "40px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Герой
             hero.x += hero.vx; hero.y += hero.vy;
             hero.x = Math.max(20, Math.min(canvas.width-20, hero.x));
             hero.y = Math.max(20, Math.min(canvas.height-20, hero.y));
             ctx.fillText("🧟‍♂️", hero.x, hero.y);
 
-            // Бочки
+            // Ресурсы
             for(let i=items.length-1; i>=0; i--) {
                 let it = items[i];
                 ctx.fillText("🛢️", it.x, it.y);
@@ -223,16 +320,14 @@
                 if(e.x<0||e.x>canvas.width) e.vx*=-1;
                 if(e.y<0||e.y>canvas.height) e.vy*=-1;
                 ctx.fillText("☢️", e.x, e.y);
-                
                 if(Math.hypot(hero.x-e.x, hero.y-e.y)<40) {
                     playSound('boom');
                     try{tg.HapticFeedback.notificationOccurred('error');}catch(e){}
                     alert("РАДИАЦИЯ! Счет: " + score);
-                    startGame(); // Рестарт
+                    startGame(); 
                     return;
                 }
             }
-
             requestAnimationFrame(loop);
         }
     </script>

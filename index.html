@@ -6,9 +6,19 @@
     <title>Bio-Bunker Debug</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <link rel="stylesheet" href="css/style.css?v=1" onerror="alert('❌ ОШИБКА: Файл css/style.css не найден! Проверь папку css.')"> 
+    <link rel="stylesheet" href="css/style.css?v=2" onerror="alert('❌ БЕДА: Файл style.css не найден! Проверь папку css.')"> 
+    
+    <style>
+        /* Аварийный стиль, если css не загрузится */
+        body { background: #330000; color: white; font-family: sans-serif; }
+    </style>
 </head>
 <body>
+
+    <div id="loader" style="position:fixed; top:0; left:0; width:100%; height:100%; background:black; display:flex; align-items:center; justify-content:center; flex-direction:column; z-index:999;">
+        <h2 style="color:yellow">ЗАГРУЗКА...</h2>
+        <p>Подключаем мозги...</p>
+    </div>
 
     <div id="screen-game" class="screen">
         <div id="hud-top">
@@ -22,82 +32,47 @@
     <div id="screen-result" class="screen">
         <div class="result-box">
             <h2 id="res-title">ВРЕМЯ ВЫШЛО!</h2>
-            <p>Собрано пыли: <span id="res-dust" style="color:#0f0; font-size:24px;">0</span></p>
-            <p id="res-level-info" style="color:#ccc; font-size:14px;"></p>
             <button class="big-btn" onclick="openShop()">МАГАЗИН</button>
         </div>
     </div>
 
-    <div id="screen-shop" class="screen active">
+    <div id="screen-shop" class="screen">
         <div class="shop-header">
             <div>УРОВЕНЬ: <span id="shop-lvl">1</span></div>
             <div>БАНК: <span id="shop-dust" style="color:#0f0">0</span></div>
         </div>
-        
         <div id="tree-viewport">
             <div id="tree-canvas">
                 <div class="tree-row">
-                    <div class="skill-node" id="node-speed" onclick="buySkill('speed')">
-                        <div class="node-title">СКОРОСТЬ</div>
-                        <div class="node-progress">0/5</div>
-                        <div class="node-cost">10 🧪</div>
-                    </div>
-                    <div class="skill-node" id="node-strength" onclick="buySkill('strength')">
-                        <div class="node-title">СИЛА</div>
-                        <div class="node-progress">0/10</div>
-                        <div class="node-cost">10 🧪</div>
-                    </div>
-                    <div class="skill-node" id="node-elements" onclick="buySkill('elements')">
-                        <div class="node-title">СТИХИИ</div>
-                        <div class="node-progress">0/11</div>
-                        <div class="node-cost">30 🧪</div>
-                    </div>
+                    <div class="skill-node" id="node-speed" onclick="buySkill('speed')"><div class="node-title">СКОРОСТЬ</div><div class="node-progress">0/5</div><div class="node-cost">10 🧪</div></div>
+                    <div class="skill-node" id="node-strength" onclick="buySkill('strength')"><div class="node-title">СИЛА</div><div class="node-progress">0/10</div><div class="node-cost">10 🧪</div></div>
+                    <div class="skill-node" id="node-elements" onclick="buySkill('elements')"><div class="node-title">СТИХИИ</div><div class="node-progress">0/11</div><div class="node-cost">30 🧪</div></div>
                 </div>
                 <div class="tree-row">
-                    <div class="skill-node" id="node-time" onclick="buySkill('time')">
-                        <div class="node-title">ВРЕМЯ</div>
-                        <div class="node-progress">0/5</div>
-                        <div class="node-cost">20 🧪</div>
-                    </div>
-                    <div class="skill-node" id="node-greed" onclick="buySkill('greed')">
-                        <div class="node-title">ЖАДНОСТЬ</div>
-                        <div class="node-progress">0/1</div>
-                        <div class="node-cost">50 🧪</div>
-                    </div>
+                    <div class="skill-node" id="node-time" onclick="buySkill('time')"><div class="node-title">ВРЕМЯ</div><div class="node-progress">0/5</div><div class="node-cost">20 🧪</div></div>
+                    <div class="skill-node" id="node-greed" onclick="buySkill('greed')"><div class="node-title">ЖАДНОСТЬ</div><div class="node-progress">0/1</div><div class="node-cost">50 🧪</div></div>
                 </div>
-                 <div class="tree-row">
-                    <div class="skill-node" id="node-doubleHit" onclick="buySkill('doubleHit')">
-                        <div class="node-title">ДВ. УДАР</div>
-                        <div class="node-progress">0/10</div>
-                        <div class="node-cost">30 🧪</div>
-                    </div>
-                    <div class="skill-node" id="node-aoe" onclick="buySkill('aoe')">
-                        <div class="node-title">AOE УДАР</div>
-                        <div class="node-progress">0/5</div>
-                        <div class="node-cost">40 🧪</div>
-                    </div>
-                     <div class="skill-node" id="node-luck" onclick="buySkill('luck')">
-                        <div class="node-title">УДАЧА</div>
-                        <div class="node-progress">0/5</div>
-                        <div class="node-cost">40 🧪</div>
-                    </div>
+                <div class="tree-row">
+                    <div class="skill-node" id="node-doubleHit" onclick="buySkill('doubleHit')"><div class="node-title">ДВ. УДАР</div><div class="node-progress">0/10</div><div class="node-cost">30 🧪</div></div>
+                    <div class="skill-node" id="node-aoe" onclick="buySkill('aoe')"><div class="node-title">AOE УДАР</div><div class="node-progress">0/5</div><div class="node-cost">40 🧪</div></div>
+                    <div class="skill-node" id="node-luck" onclick="buySkill('luck')"><div class="node-title">УДАЧА</div><div class="node-progress">0/5</div><div class="node-cost">40 🧪</div></div>
                 </div>
-                <div class="tree-row" style="margin-top: 50px;">
-                     <div class="skill-node" id="node-superStr" onclick="buySkill('superStr')" style="border-color: #f00;">
-                        <div class="node-title" style="color:#f66">ТЕСТ: СУПЕР СИЛА</div>
-                        <div class="node-progress">0/1</div>
-                        <div class="node-cost">5 🧪</div>
-                    </div>
+                 <div class="tree-row" style="margin-top:50px;">
+                     <div class="skill-node" id="node-superStr" onclick="buySkill('superStr')" style="border-color: red;"><div class="node-title">ТЕСТ: СИЛА</div><div class="node-progress">0/1</div><div class="node-cost">5 🧪</div></div>
                 </div>
             </div>
         </div>
-
-        <div class="shop-footer">
-            <button class="big-btn" onclick="restartLevel()">В БОЙ</button>
-        </div>
+        <div class="shop-footer"><button class="big-btn" onclick="restartLevel()">В БОЙ</button></div>
     </div>
 
-    <script src="js/game.js?v=1" onerror="alert('❌ ОШИБКА: Файл js/game.js не найден! Проверь, лежит ли он в папке js.')"></script>
+    <script src="js/game.js?v=2" onerror="alert('❌ БЕДА: Файл game.js не найден! Проверь папку js.')"></script>
+    
+    <script>
+        // 3. Проверка на ошибки внутри кода (синтаксис)
+        window.onerror = function(msg, url, line) {
+            alert("ОШИБКА В КОДЕ:\n" + msg);
+        };
+    </script>
 
 </body>
 </html>

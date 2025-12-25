@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bio-Bunker Modular</title>
+    <title>Bio-Bunker Debug</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <link rel="stylesheet" href="css/style.css"> 
+    <link rel="stylesheet" href="css/style.css?v=1" onerror="alert('❌ ОШИБКА: Файл css/style.css не найден! Проверь папку css.')"> 
 </head>
 <body>
 
-    <div id="screen-game" class="screen active">
+    <div id="screen-game" class="screen">
         <div id="hud-top">
             <div class="hud-val">ПЫЛЬ: <span id="game-dust" style="color:#0f0">0</span></div>
             <div id="timer-box">10.0</div>
@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <div id="screen-shop" class="screen">
+    <div id="screen-shop" class="screen active">
         <div class="shop-header">
             <div>УРОВЕНЬ: <span id="shop-lvl">1</span></div>
             <div>БАНК: <span id="shop-dust" style="color:#0f0">0</span></div>
@@ -97,7 +97,7 @@
         </div>
     </div>
 
-    <script src="js/game.js"></script>
+    <script src="js/game.js?v=1" onerror="alert('❌ ОШИБКА: Файл js/game.js не найден! Проверь, лежит ли он в папке js.')"></script>
 
 </body>
 </html>

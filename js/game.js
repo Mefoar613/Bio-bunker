@@ -3,7 +3,7 @@ tg.expand();
 
 // --- СОСТОЯНИЕ ---
 let player = {
-    dust: 100, // Стартовый капитал для тестов
+    dust: 100,
     level: 1,
     speed: 0, time: 0, doubleHit: 0,
     strength: 0, greed: 0, aoe: 0, luck: 0,
@@ -11,7 +11,7 @@ let player = {
     superStr: 0
 };
 
-// Загрузка сохранения
+// Загрузка
 try {
     const saved = localStorage.getItem('bioBunkerSave_v10');
     if(saved) player = JSON.parse(saved);
@@ -65,7 +65,7 @@ function updateTimer() {
     if(timer <= 0) endRound(false);
 }
 
-// Эта функция должна быть глобальной, чтобы HTML её видел
+// ГЛОБАЛЬНЫЕ ФУНКЦИИ
 window.handleTap = function(e) {
     const now = Date.now();
     const cd = Math.max(0.05, CONFIG.baseCD - (player.speed * 0.01)) * 1000;
@@ -139,3 +139,111 @@ function endRound(win) {
     clearInterval(gameInterval);
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-result').classList.add('active');
+    document.getElementById('res-dust').innerText = sessionDust;
+    const title = document.getElementById('res-title');
+    const info = document.getElementById('res-level-info');
+    if(win) {
+        title.innerText = "УРОВЕНЬ ЗАЧИЩЕН!"; title.style.color = "#0f0";
+        info.innerText = "Уровень повышен! Кристаллы стали крепче.";
+        player.level++;
+    } else {
+        title.innerText = "ВРЕМЯ ВЫШЛО"; title.style.color = "#f00";
+        info.innerText = "Не хватает урона. Посетите магазин.";
+    }
+    localStorage.setItem('bioBunkerSave_v10', JSON.stringify(player));
+}
+
+// --- МАГАЗИН ---
+const UPGRADES = [
+    { id: 'speed', max: 5, cost: l=>(l+1)*10, parent: null },
+    { id: 'strength', max: 10, cost: l=>(l+1)*10 + 10, parent: null },
+    { id: 'elements', max: 11, cost: l=>30, parent: null },
+    { id: 'time', max: 5, cost: l=>(l+1)*10 + 10, parent: 'speed' },
+    { id: 'greed', max: 1, cost: l=>50, parent: 'strength' },
+    { id: 'doubleHit', max: 10, cost: l=>(l+1)*10 + 20, parent: 'time' },
+    { id: 'aoe', max: 5, cost: l=>(l+1)*20, parent: 'greed' },
+    { id: 'luck', max: 5, cost: l=>(l+1)*20, parent: 'greed' },
+    { id: 'superStr', max: 1, cost: l=>5, parent: null }
+];
+
+window.openShop = function() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-shop').classList.add('active');
+    document.getElementById('shop-lvl').innerText = player.level;
+    renderTree();
+};
+
+function renderTree() {
+    document.getElementById('shop-dust').innerText = player.dust;
+    UPGRADES.forEach(u => {
+        const node = document.getElementById(`node-${u.id}`);
+        if(!node) return;
+        const lvl = player[u.id];
+        const cost = u.cost(lvl);
+        const isMax = lvl >= u.max;
+        const parentOk = !u.parent || player[u.parent] > 0;
+
+        node.className = 'skill-node';
+        if (!parentOk) node.classList.add('node-locked');
+        else if (isMax) node.classList.add('node-maxed');
+        else node.classList.add('node-available');
+
+        node.querySelector('.node-progress').innerText = `${lvl}/${u.max}`;
+        const costEl = node.querySelector('.node-cost');
+        if(isMax) costEl.style.display = 'none';
+        else {
+            costEl.style.display = 'block';
+            costEl.innerText = `${cost} 🧪`;
+            costEl.style.color = player.dust >= cost ? '#0f0' : '#f00';
+        }
+    });
+}
+
+window.buySkill = function(id) {
+    const u = UPGRADES.find(x => x.id === id);
+    if(!u) return;
+    if (u.parent && player[u.parent] < 1) return;
+    const cost = u.cost(player[id]);
+    if(player.dust >= cost && player[id] < u.max) {
+        player.dust -= cost;
+        player[id]++;
+        renderTree();
+        tg.HapticFeedback.selectionChanged();
+        localStorage.setItem('bioBunkerSave_v10', JSON.stringify(player));
+    } else {
+        tg.HapticFeedback.notificationOccurred('error');
+    }
+};
+
+window.restartLevel = restartLevel; 
+
+// ЗАПУСК
+window.addEventListener('load', () => {
+    const viewport = document.getElementById('tree-viewport');
+    const treeCanvas = document.getElementById('tree-canvas');
+    if(viewport && treeCanvas) {
+        let isDragging = false, startX, startY, translateX = 0, translateY = 0;
+        viewport.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            treeCanvas.style.transition = 'none';
+        });
+        viewport.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            treeCanvas.style.transform = `translate(${translateX}px, ${translateY}px)`;
+        });
+        const stopDrag = () => { isDragging = false; };
+        viewport.addEventListener('pointerup', stopDrag);
+        viewport.addEventListener('pointercancel', stopDrag);
+    }
+    
+    // Снимаем экран загрузки
+    const loader = document.getElementById('loader');
+    if(loader) loader.style.display = 'none';
+    
+    // Открываем магазин
+    openShop();
+});

@@ -2,55 +2,66 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bio-Bunker X-RAY</title>
-    <style>
-        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; word-wrap: break-word; }
-        h2 { border-bottom: 1px solid #0f0; }
-        .error { color: #f00; font-weight: bold; }
-        .ok { color: #0f0; font-weight: bold; }
-        #log { background: #000; border: 1px solid #333; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bio-Bunker Production</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=3"> 
 </head>
 <body>
-    <h2>🔍 ДИАГНОСТИКА ФАЙЛОВ</h2>
-    <div id="status">Подключение...</div>
-    <div id="log">Ждем данных...</div>
+
+    <div id="screen-game" class="screen active">
+        <div id="hud-top">
+            <div class="hud-val">ПЫЛЬ: <span id="game-dust" style="color:#0f0">0</span></div>
+            <div id="timer-box">10.0</div>
+        </div>
+        <div id="cd-layer" class="cooldown-overlay"></div>
+        <div id="game-area" onpointerdown="handleTap(event)"></div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="result-box">
+            <h2 id="res-title">ВРЕМЯ ВЫШЛО!</h2>
+            <p>Собрано пыли: <span id="res-dust" style="color:#0f0; font-size:24px;">0</span></p>
+            <p id="res-level-info" style="color:#ccc; font-size:14px;"></p>
+            <button class="big-btn" onclick="openShop()">МАГАЗИН</button>
+        </div>
+    </div>
+
+    <div id="screen-shop" class="screen">
+        <div class="shop-header">
+            <div>УРОВЕНЬ: <span id="shop-lvl">1</span></div>
+            <div>БАНК: <span id="shop-dust" style="color:#0f0">0</span></div>
+        </div>
+        <div id="tree-viewport">
+            <div id="tree-canvas">
+                <div class="tree-row">
+                    <div class="skill-node" id="node-speed" onclick="buySkill('speed')"><div class="node-title">СКОРОСТЬ</div><div class="node-progress">0/5</div><div class="node-cost">10 🧪</div></div>
+                    <div class="skill-node" id="node-strength" onclick="buySkill('strength')"><div class="node-title">СИЛА</div><div class="node-progress">0/10</div><div class="node-cost">10 🧪</div></div>
+                    <div class="skill-node" id="node-elements" onclick="buySkill('elements')"><div class="node-title">СТИХИИ</div><div class="node-progress">0/11</div><div class="node-cost">30 🧪</div></div>
+                </div>
+                <div class="tree-row">
+                    <div class="skill-node" id="node-time" onclick="buySkill('time')"><div class="node-title">ВРЕМЯ</div><div class="node-progress">0/5</div><div class="node-cost">20 🧪</div></div>
+                    <div class="skill-node" id="node-greed" onclick="buySkill('greed')"><div class="node-title">ЖАДНОСТЬ</div><div class="node-progress">0/1</div><div class="node-cost">50 🧪</div></div>
+                </div>
+                <div class="tree-row">
+                    <div class="skill-node" id="node-doubleHit" onclick="buySkill('doubleHit')"><div class="node-title">ДВ. УДАР</div><div class="node-progress">0/10</div><div class="node-cost">30 🧪</div></div>
+                    <div class="skill-node" id="node-aoe" onclick="buySkill('aoe')"><div class="node-title">AOE УДАР</div><div class="node-progress">0/5</div><div class="node-cost">40 🧪</div></div>
+                    <div class="skill-node" id="node-luck" onclick="buySkill('luck')"><div class="node-title">УДАЧА</div><div class="node-progress">0/5</div><div class="node-cost">40 🧪</div></div>
+                </div>
+                 <div class="tree-row" style="margin-top:50px;">
+                     <div class="skill-node" id="node-superStr" onclick="buySkill('superStr')" style="border-color: #f00;"><div class="node-title">ТЕСТ: СИЛА</div><div class="node-progress">0/1</div><div class="node-cost">5 🧪</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="shop-footer"><button class="big-btn" onclick="restartLevel()">В БОЙ</button></div>
+    </div>
 
     <script>
-        const log = document.getElementById('log');
-        const status = document.getElementById('status');
-
-        async function checkFile() {
-            try {
-                status.innerHTML = "Попытка скачать js/game.js...";
-                
-                // Пытаемся скачать файл как текст (чтобы увидеть содержимое)
-                const response = await fetch('js/game.js?v=' + Math.random());
-                
-                if (response.status === 200) {
-                    const text = await response.text();
-                    status.innerHTML = "<span class='ok'>✅ ФАЙЛ НАЙДЕН! (Код 200)</span>";
-                    
-                    // Показываем первые 200 символов файла
-                    log.innerHTML = "ВОТ НАЧАЛО ТВОЕГО ФАЙЛА:\n------------------\n" + 
-                                    text.substring(0, 300)
-                                    .replace(/</g, "&lt;") // Защита от HTML тегов
-                                    .replace(/>/g, "&gt;") + 
-                                    "\n------------------\n\nВОТ КОНЕЦ ФАЙЛА:\n------------------\n" + 
-                                    text.substring(text.length - 100);
-                } else {
-                    status.innerHTML = "<span class='error'>❌ ОШИБКА: Файл не найден (Код " + response.status + ")</span>";
-                    log.innerHTML = "Гитхаб говорит, что файла нет. Возможно:\n1. Папка называется не 'js' (а например 'JS' или 'js ')\n2. Файл называется не 'game.js'\n3. Гитхаб еще не обновился (жди 10 мин).";
-                }
-
-            } catch (err) {
-                status.innerHTML = "<span class='error'>❌ КРИТИЧЕСКАЯ ОШИБКА СКРИПТА</span>";
-                log.innerHTML = err.toString();
-            }
-        }
-
-        checkFile();
+        window.onerror = function(msg, url, line) {
+            alert("⚠️ ОШИБКА JS:\n" + msg + "\nСтрока: " + line);
+        };
     </script>
+    <script src="js/game.js?v=3"></script>
+
 </body>
 </html>

@@ -3,15 +3,13 @@ tg.expand();
 
 // --- СОСТОЯНИЕ ---
 let player = {
-    dust: 100,
-    level: 1,
+    dust: 100, level: 1,
     speed: 0, time: 0, doubleHit: 0,
     strength: 0, greed: 0, aoe: 0, luck: 0,
-    elements: 0,
-    superStr: 0
+    elements: 0, superStr: 0
 };
 
-// Загрузка
+// Загрузка сохранения
 try {
     const saved = localStorage.getItem('bioBunkerSave_v10');
     if(saved) player = JSON.parse(saved);
@@ -32,26 +30,23 @@ function restartLevel() {
     document.getElementById('game-dust').innerText = "0";
     
     const area = document.getElementById('game-area');
-    area.innerHTML = ''; crystals = [];
-    const areaW = area.clientWidth - 70; const areaH = area.clientHeight - 70;
+    if(area) {
+        area.innerHTML = ''; crystals = [];
+        const areaW = area.clientWidth - 70; const areaH = area.clientHeight - 70;
+        const crystalEmoji = player.level === 1 ? '🟢' : '🔴';
+        const crystalColor = player.level === 1 ? '#0f0' : '#f00';
 
-    const crystalEmoji = player.level === 1 ? '🟢' : '🔴';
-    const crystalColor = player.level === 1 ? '#0f0' : '#f00';
-
-    for(let i=0; i<10; i++) {
-        const c = document.createElement('div');
-        c.className = 'crystal';
-        c.innerText = crystalEmoji;
-        c.style.color = crystalColor;
-        c.style.left = Math.random() * areaW + 'px';
-        c.style.top = Math.random() * areaH + 'px';
-        
-        const bar = document.createElement('div'); bar.className = 'hp-bar';
-        const fill = document.createElement('div'); fill.className = 'hp-val';
-        fill.style.background = crystalColor;
-        bar.appendChild(fill); c.appendChild(bar);
-        area.appendChild(c);
-        crystals.push({ el: c, fill: fill, hp: hp, maxHp: hp, active: true });
+        for(let i=0; i<10; i++) {
+            const c = document.createElement('div');
+            c.className = 'crystal'; c.innerText = crystalEmoji; c.style.color = crystalColor;
+            c.style.left = Math.random() * areaW + 'px'; c.style.top = Math.random() * areaH + 'px';
+            const bar = document.createElement('div'); bar.className = 'hp-bar';
+            const fill = document.createElement('div'); fill.className = 'hp-val';
+            fill.style.background = crystalColor;
+            bar.appendChild(fill); c.appendChild(bar);
+            area.appendChild(c);
+            crystals.push({ el: c, fill: fill, hp: hp, maxHp: hp, active: true });
+        }
     }
     clearInterval(gameInterval);
     gameInterval = setInterval(updateTimer, 100);
@@ -60,8 +55,10 @@ function restartLevel() {
 function updateTimer() {
     timer -= 0.1;
     const tEl = document.getElementById('timer-box');
-    tEl.innerText = timer.toFixed(1);
-    if(timer<=3) tEl.classList.add('danger-time'); else tEl.classList.remove('danger-time');
+    if(tEl) {
+        tEl.innerText = timer.toFixed(1);
+        if(timer<=3) tEl.classList.add('danger-time'); else tEl.classList.remove('danger-time');
+    }
     if(timer <= 0) endRound(false);
 }
 
@@ -71,7 +68,7 @@ window.handleTap = function(e) {
     const cd = Math.max(0.05, CONFIG.baseCD - (player.speed * 0.01)) * 1000;
     if (now - lastTapTime < cd) {
         const overlay = document.getElementById('cd-layer');
-        overlay.style.opacity = 1; setTimeout(()=> overlay.style.opacity = 0, 100);
+        if(overlay) { overlay.style.opacity = 1; setTimeout(()=> overlay.style.opacity = 0, 100); }
         return;
     }
     lastTapTime = now;
@@ -80,6 +77,7 @@ window.handleTap = function(e) {
     let damage = 1 + player.strength + (player.superStr * 100);
     let hits = 1;
     if (Math.random()*100 < player.doubleHit) { hits = 2; showFloat(e.clientX, e.clientY, "x2!", "#ff0"); }
+    
     let elementalProc = Math.random()*100 < (player.elements * 0.1);
     let aoeProc = Math.random()*100 < (player.aoe * 0.5);
 
@@ -98,10 +96,9 @@ window.handleTap = function(e) {
 
 function hitCrystal(c, dmg, bonusDmg = 0) {
     if(!c.active) return;
-    const totalDmg = dmg + bonusDmg;
-    c.hp -= totalDmg;
+    c.hp -= (dmg + bonusDmg);
     
-    showDamage(c.el.offsetLeft + 30, c.el.offsetTop, totalDmg);
+    showDamage(c.el.offsetLeft + 30, c.el.offsetTop, dmg + bonusDmg);
 
     c.el.style.transform = `scale(0.9) rotate(${Math.random()*20-10}deg)`;
     setTimeout(() => c.el.style.transform = 'scale(1) rotate(0deg)', 50);
@@ -112,7 +109,8 @@ function hitCrystal(c, dmg, bonusDmg = 0) {
     if(Math.random()*100 < (player.luck * 0.5)) loot *= 2;
     if(player.level > 1) loot *= 2;
     sessionDust += loot; player.dust += loot;
-    document.getElementById('game-dust').innerText = sessionDust;
+    const dustEl = document.getElementById('game-dust');
+    if(dustEl) dustEl.innerText = sessionDust;
 
     if(c.hp <= 0) {
         c.active = false; c.el.style.opacity = 0; c.el.style.pointerEvents = 'none';
@@ -121,18 +119,17 @@ function hitCrystal(c, dmg, bonusDmg = 0) {
 }
 
 function showDamage(x, y, dmg) {
-    const el = document.createElement('div');
-    el.className = 'dmg-num'; el.innerText = "-" + dmg;
+    const el = document.createElement('div'); el.className = 'dmg-num'; el.innerText = "-" + dmg;
     el.style.left = x + 'px'; el.style.top = y + 'px';
-    document.getElementById('game-area').appendChild(el);
-    setTimeout(()=> el.remove(), 600);
+    const area = document.getElementById('game-area');
+    if(area) { area.appendChild(el); setTimeout(()=> el.remove(), 600); }
 }
 function showFloat(x, y, text, color) {
     const el = document.createElement('div'); el.className = 'dmg-num'; 
     el.innerText = text; el.style.color = color; el.style.fontSize = '20px';
     el.style.left = x + 'px'; el.style.top = y + 'px';
-    document.getElementById('game-area').appendChild(el);
-    setTimeout(()=> el.remove(), 600);
+    const area = document.getElementById('game-area');
+    if(area) { area.appendChild(el); setTimeout(()=> el.remove(), 600); }
 }
 
 function endRound(win) {
@@ -169,12 +166,15 @@ const UPGRADES = [
 window.openShop = function() {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-shop').classList.add('active');
-    document.getElementById('shop-lvl').innerText = player.level;
+    const lvlEl = document.getElementById('shop-lvl');
+    if(lvlEl) lvlEl.innerText = player.level;
     renderTree();
 };
 
 function renderTree() {
-    document.getElementById('shop-dust').innerText = player.dust;
+    const dEl = document.getElementById('shop-dust');
+    if(dEl) dEl.innerText = player.dust;
+    
     UPGRADES.forEach(u => {
         const node = document.getElementById(`node-${u.id}`);
         if(!node) return;
@@ -188,13 +188,17 @@ function renderTree() {
         else if (isMax) node.classList.add('node-maxed');
         else node.classList.add('node-available');
 
-        node.querySelector('.node-progress').innerText = `${lvl}/${u.max}`;
+        const prog = node.querySelector('.node-progress');
+        if(prog) prog.innerText = `${lvl}/${u.max}`;
+        
         const costEl = node.querySelector('.node-cost');
-        if(isMax) costEl.style.display = 'none';
-        else {
-            costEl.style.display = 'block';
-            costEl.innerText = `${cost} 🧪`;
-            costEl.style.color = player.dust >= cost ? '#0f0' : '#f00';
+        if(costEl) {
+            if(isMax) costEl.style.display = 'none';
+            else {
+                costEl.style.display = 'block';
+                costEl.innerText = `${cost} 🧪`;
+                costEl.style.color = player.dust >= cost ? '#0f0' : '#f00';
+            }
         }
     });
 }
